@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boss Arena: Shadow Dragon</title>
+    <link rel="stylesheet" href="https://pyscript.net" />
+    <script type="module" src="https://pyscript.net"></script>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #121212;
+            color: #e0e0e0;
+            max-width: 600px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+        h1 { color: #ff5555; text-align: center; }
+        #stats-bar {
+            background: #1e1e1e;
+            border: 1px solid #444;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+            color: #50fa7b;
+            display: none;
+        }
+        #game-log {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            line-height: 1.5;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        input {
+            padding: 10px;
+            font-family: inherit;
+            font-size: 16px;
+            background: #222;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 16px;
+            font-family: inherit;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            background: #333;
+            color: #fff;
+            border: 1px solid #666;
+            border-radius: 4px;
+        }
+        button:hover { background: #444; }
+        .btn-attack { border-color: #ff5555; color: #ff5555; }
+        .btn-heal { border-color: #50fa7b; color: #50fa7b; }
+        .btn-special { border-color: #bd93f9; color: #bd93f9; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <h1>🐉 BOSS ARENA</h1>
+    
+    <div id="stats-bar">Your HP: 100 | Dragon HP: 120 | Potions: 3</div>
+    <div id="game-log">Loading game engine...</div>
+
+    <!-- Stage 1: Name Input -->
+    <div id="stage-name" class="controls hidden">
+        <input type="text" id="name-input" placeholder="Enter your name..." />
+        <button py-click="submit_name">Enter Arena</button>
+    </div>
+
+    <!-- Stage 2: Fight Choice -->
+    <div id="stage-choice" class="controls hidden">
+        <button class="btn-attack" py-click="choose_fight">Yes (Fight!)</button>
+        <button py-click="choose_run">No (Run Away)</button>
+    </div>
+
+    <!-- Stage 3: Combat Actions -->
+    <div id="stage-combat" class="controls hidden">
+        <button class="btn-attack" py-click="do_attack">⚔️ Attack</button>
+        <button class="btn-heal" py-click="do_heal">🧪 Heal</button>
+        <button class="btn-special" py-click="do_special">⚡ Special</button>
+    </div>
+
+    <!-- Stage 4: Game Over / Retry -->
+    <div id="stage-retry" class="controls hidden">
+        <button py-click="reset_game">🔄 Play Again</button>
+    </div>
+
+    <script type="py">
+        import random
+        from pyscript import document
+
+        player = ""
+        player_hp = 100
+        boss_hp = 120
+        potions = 3
+
+        def log(text):
+            box = document.querySelector("#game-log")
+            box.innerText += text + "\n"
+            box.scrollTop = box.scrollHeight
+
+        def update_stats():
+            bar = document.querySelector("#stats-bar")
+            bar.innerText = f"Your HP: {max(0, player_hp)} | Dragon HP: {max(0, boss_hp)} | Potions: {potions}"
+
+        def show_stage(stage_id):
+            for s in ["stage-name", "stage-choice", "stage-combat", "stage-retry"]:
+                document.querySelector(f"#{s}").classList.add("hidden")
+            if stage_id:
+                document.querySelector(f"#{stage_id}").classList.remove("hidden")
+
+        def reset_game(event=None):
+            global player_hp, boss_hp, potions
+            player_hp = 100
+            boss_hp = 120
+            potions = 3
+            document.querySelector("#game-log").innerText = ""
+            document.querySelector("#stats-bar").style.display = "none"
+            log("Enter your name to begin:")
+            show_stage("stage-name")
+
+        def submit_name(event):
+            global player
+            val = document.querySelector("#name-input").value.strip()
+            player = val if val else "Hero"
+            document.querySelector("#game-log").innerText = ""
+            log(f"WELCOME TO THE BOSS ARENA {player}!")
+            log("A wild Shadow Dragon appears!\n")
+            log("Do you want to fight the dragon?")
+            show_stage("stage-choice")
+
+        def choose_fight(event):
+            global player_hp
+            boss_damage = random.randint(1, 5)
+            player_hp -= boss_damage
+            log(f"\n> You chose to fight!")
+            log(f"The Dragon roars and attacks you for {boss_damage} hp!\n")
+            document.querySelector("#stats-bar").style.display = "block"
+            update_stats()
+            show_stage("stage-combat")
+
+        def choose_run(event):
+            global player_hp
+            player_hp -= 500
+            log(f"\n> You tried to run away...")
+            log("You ran away, but the dragon killed you on your way out!")
+            end_game()
+
+        def boss_turn():
+            global player_hp
+            if boss_hp <= 0:
+                end_game()
+                return
+            boss_damage = random.randint(10, 22)
+            player_hp -= boss_damage
+            log(f"The Shadow Dragon breathes fire for {boss_damage} damage!\n")
+            update_stats()
+            if player_hp <= 0:
+                end_game()
+
+        def do_attack(event):
+            global boss_hp
+            log("-" * 40)
+            damage = random.randint(15, 25)
+            boss_hp -= damage
+            log(f"You slashed the dragon for {damage} damage!")
+            update_stats()
+            boss_turn()
+
+        def do_heal(event):
+            global player_hp, potions
+            log("-" * 40)
+            if potions > 0:
+                heal_amount = random.randint(20, 35)
+                player_hp = min(100, player_hp + heal_amount)
+                potions -= 1
+                log(f"You drank a potion and recovered {heal_amount} HP!")
+            else:
+                log("No potions left! You wasted your turn searching your bag!")
+            update_stats()
+            boss_turn()
+
+        def do_special(event):
+            global boss_hp
+            log("-" * 40)
+            if random.random() < 0.2:
+                boss_hp -= 500
+                log("CRITICAL HIT! Your lightning strike killed the dragon!")
+            else:
+                log("Your special attack missed!")
+            update_stats()
+            boss_turn()
+
+        def end_game():
+            update_stats()
+            log("=" * 40)
+            if player_hp > 0:
+                log(f"🏆 {player} wins!")
+            else:
+                log("💀 GAME OVER! The Shadow Dragon defeated you.")
+            show_stage("stage-retry")
+
+        # Initialize game on load
+        reset_game()
+    </script>
+
+</body>
+</html>
